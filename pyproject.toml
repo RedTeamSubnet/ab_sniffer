@@ -27,11 +27,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-dynamic = ["version", "dependencies", "optional-dependencies"]
+dynamic = ["dependencies", "optional-dependencies"]
+version = "1.0.0"
 
 [tool.setuptools.dynamic]
-version = { attr = "auto_browser_sniffer.__version__.__version__" }
 dependencies = { file = "./requirements.txt" }
+
 
 [tool.setuptools.dynamic.optional-dependencies]
 test = { file = ["./requirements/requirements.test.txt"] }
