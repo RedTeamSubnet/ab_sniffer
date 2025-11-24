@@ -59,8 +59,8 @@ jobs:
           build-args: |
             HASH_PASSWORD=${{ secrets.DOCKER_UID_HASH_PASSWORD }}
           load: true
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:cache-latest
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:test
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:cache-latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:test
           
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -69,11 +69,11 @@ jobs:
           build-args: |
             HASH_PASSWORD=${{ secrets.DOCKER_UID_HASH_PASSWORD }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:cache-latest
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:cache-latest,mode=max
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:cache-latest
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:cache-latest,mode=max
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/ch.humanize-behaviour:v${{ env.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ab_sniffer:v${{ env.VERSION }}
           push: true
           
       - name: Summary
