@@ -57,7 +57,8 @@ RUN _BUILD_TARGET_ARCH=$(uname -m) && \
 
 COPY requirements ./requirements
 COPY requirements.txt ./requirements.txt
-RUN /opt/conda/bin/pip install --timeout 60 -r ./requirements.txt
+COPY requirements/requirements.deploy.txt ./requirements/requirements.deploy.txt
+RUN /opt/conda/bin/pip install --timeout 60 -r ./requirements.txt && /opt/conda/bin/pip install --timeout 60 -r ./requirements/requirements.deploy.txt
 
 # Install ESLint
 RUN npm init -y && \
