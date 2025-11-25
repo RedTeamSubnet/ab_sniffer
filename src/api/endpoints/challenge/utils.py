@@ -2,15 +2,13 @@
 
 import os
 import time
-import json
 import subprocess
 import random
-from typing import Union
 
-from docker.models.networks import Network
 import docker
 import threading
 from docker import DockerClient
+from docker.errors import APIError
 from pydantic import validate_call
 
 from api.config import config
@@ -57,34 +55,6 @@ def copy_detector_file(miner_output: MinerOutput, templates_dir: str) -> None:
     return
 
 
-def check_format_error(templates_dir: str) -> bool:
-    _detection_template_dir = os.path.join(templates_dir, "static", "detection")
-    _detection_js_path = os.path.join(_detection_template_dir, "detection.js")
-    cmd = ["npx", "eslint", "--format", "json", _detection_js_path]
-    try:
-        logger.info(f"Running command: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,  # Don't raise an exception on lint errors
-        )
-
-        if result.stdout:
-            _lint_result = json.loads(result.stdout)
-            if _lint_result[0]["errorCount"] > 0:
-                logger.warning(
-                    f"ESLint found {_lint_result[0]['errorCount']} errors in detection.js"
-                )
-                return False
-        logger.success("detection.js passed the ESLint check.")
-        return True
-    except subprocess.CalledProcessError:
-        logger.warning("ESLint check failed, continuing anyway")
-        return True
-
-
 def get_submission_file_size(templates_dir: str) -> int:
     _detection_template_dir = os.path.join(templates_dir, "static", "detection")
     _detection_js_path = os.path.join(_detection_template_dir, "detection.js")
@@ -99,9 +69,8 @@ def run_bot_container(
     network_name: str = "framework_network",
     ulimit: int = 32768,
     **kwargs,
-) -> str:
+) -> None:
     logger.info(f"Running {image_name} docker container...")
-    detected_driver = None
 
     try:
         # Network setup from the provided function
@@ -155,26 +124,15 @@ def run_bot_container(
         _ulimit_nofile = docker.types.Ulimit(name="nofile", soft=ulimit, hard=ulimit)
 
         # Generate a temporary container ID for this run
-        _container_id = f"run_{int(time.time())}"
-        _log_path = f"/tmp/driver_type_{_container_id}.txt"
         _web_url = f"http://{_gateway_ip}:{config.api.port}/_web"
 
-        # Mount volume for easier file access
-        volumes = {"/tmp": {"bind": "/host_tmp", "mode": "rw"}}
-
         # Run the container
-
+        _run_timeout = getattr(config.challenge, "bot_timeout", 15)
         _container = docker_client.containers.run(
             image=image_name,
             name=container_name,
             ulimits=[_ulimit_nofile],
-            environment={
-                "ABS_WEB_URL": _web_url,
-                "CONTAINER_ID": _container_id,
-                "DETECTED_DRIVER_PATH": _log_path,
-                "HOST_DRIVER_PATH": f"/host_tmp/driver_type_{_container_id}.txt",
-            },
-            volumes=volumes,
+            environment={"ABS_WEB_URL": _web_url},
             network=network_name,
             detach=True,
             **kwargs,
@@ -185,48 +143,38 @@ def run_bot_container(
         log_thread.daemon = True
         log_thread.start()
 
-        # Poll for driver type file (both inside container and in host-mounted volume)
-        _poll_timeout = 60  # Longer timeout
-        _poll_interval = 2  # Seconds
-        _elapsed = 0
+        try:
+            logger.debug(
+                f"Waiting up to {_run_timeout}s for container '{container_name}' to finish"
+            )
+            _container.wait(timeout=_run_timeout)
+        except APIError as api_err:
+            logger.warning(
+                f"Error while waiting for container '{container_name}': {api_err.explanation}"
+            )
+        except Exception as wait_err:
+            logger.warning(
+                f"Timeout or error while waiting for container '{container_name}': {wait_err}"
+            )
+        finally:
+            try:
+                _container.stop(timeout=5)
+            except Exception:
+                pass
+            try:
+                _container.remove(force=True)
+            except Exception:
+                logger.debug(
+                    f"Container '{container_name}' already removed or failed to remove."
+                )
 
-        while _elapsed < _poll_timeout:
-            # Check host-mounted file first
-            host_driver_path = f"/tmp/driver_type_{_container_id}.txt"
-            if os.path.exists(host_driver_path):
-                try:
-                    with open(host_driver_path, "r") as f:
-                        detected_driver = f.read().strip()
-                        if detected_driver:  # Ensure we have a non-empty result
-                            logger.info(
-                                f"Driver type found in host volume: {detected_driver}"
-                            )
-                            break
-                        else:
-                            logger.warning(
-                                "Empty driver type file found in host volume"
-                            )
-                except Exception as e:
-                    logger.warning(f"Error reading host driver file: {str(e)}")
-
-            # Update container status
-            _container.reload()
-
-            logger.info(f"Driver type not found, retrying... ({_elapsed}s)")
-            time.sleep(_poll_interval)
-            _elapsed += _poll_interval
-
-        # Clean up
-        _container.stop()
-        # ~ TODO: We need to stop the container not remove it
-        _container.remove(force=True)
         logger.info(f"Successfully ran {image_name} docker container.")
 
     except Exception as err:
         logger.error(f"Failed to run {image_name} docker: {str(err)}!")
         raise
 
-    return detected_driver
+    return None
 
 
 def stream_container_logs(container):
@@ -258,6 +206,5 @@ __all__ = [
     "copy_detector_file",
     "run_bot_container",
     "stop_container",
-    "check_format_error",
     "gen_ran_framework_sequence",
 ]
