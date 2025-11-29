@@ -42,7 +42,7 @@ class MainConfig(FrozenBaseConfig):
     def _check_debug(cls, val: str) -> str:
         _debug_env = "DEBUG"
         if _debug_env in os.environ:
-            val = os.getenv(_debug_env)
+            val = os.getenv(_debug_env).lower() in ("true", "1", "yes")
 
         return val
 

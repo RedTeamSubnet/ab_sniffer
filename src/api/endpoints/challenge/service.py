@@ -1,7 +1,6 @@
 import time
 import pathlib
 import docker
-
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -60,6 +59,10 @@ def score(
                 logger.warning(
                     f"Please visit endpoint {web_url} to complete human verification for the task."
                 )
+
+                if not config.debug:
+                    ch_utils.run_verification_webhook()
+
                 _bot_timeout = 120  # 2 minutes for human
             else:
                 _bot_timeout = config.challenge.bot_timeout
@@ -69,7 +72,6 @@ def score(
                 )
                 logger.info(f"Running detection against {_framework_name}")
                 try:
-                    _start_time = time.time()
 
                     ch_utils.run_bot_container(
                         docker_client=_docker_client,
@@ -78,8 +80,6 @@ def score(
                         image_name=_framework_image,
                         ulimit=config.challenge.docker_ulimit,
                     )
-                    _end_time = time.time()
-                    _execution_time = _end_time - _start_time
 
                 except Exception as err:
                     logger.error(
@@ -98,10 +98,9 @@ def score(
                     payload_manager.update_task_status(
                         _framework_order, TaskStatusEnum.COMPLETED
                     )
-                    payload_manager.submitted_payloads[_framework_order][
-                        "execution_time"
-                    ] = _execution_time
-                    ch_utils.stop_container(container_name=_framework_name)
+
+                    if not _framework_name == "human":
+                        ch_utils.stop_container(container_name=_framework_name)
                     break
 
                 _bot_timeout -= 1
@@ -112,7 +111,8 @@ def score(
                     payload_manager.update_task_status(
                         _framework_order, TaskStatusEnum.TIMED_OUT
                     )
-                    ch_utils.stop_container(container_name=_framework_name)
+                    if not _framework_name == "human":
+                        ch_utils.stop_container(container_name=_framework_name)
                     break
                 time.sleep(1)
         _score = payload_manager.calculate_score()

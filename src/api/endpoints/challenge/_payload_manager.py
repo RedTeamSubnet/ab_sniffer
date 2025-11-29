@@ -4,6 +4,7 @@ from pydantic import validate_call
 from api.config import config
 from api.logger import logger
 from api.endpoints.challenge.schemas import TaskStatusEnum
+from api.core.configs._challenge import FrameworkImageConfig
 
 
 class PayloadManager:
@@ -52,7 +53,7 @@ class PayloadManager:
 
     def calculate_score(self) -> float:
         _total_tasks = len(self.expected_order)
-        # check no collision with human
+
         for submission in self.submitted_payloads.values():
             if submission["expected_framework"] == "human" and (
                 submission["collided"] or not submission["detected"]
@@ -74,7 +75,8 @@ class PayloadManager:
         return self.score
 
     def gen_ran_framework_sequence(self) -> None:
-        frameworks = config.challenge.framework_images
+        frameworks = config.challenge.framework_images.copy()
+        frameworks.append(FrameworkImageConfig(name="human", image="none"))
         repeated_frameworks = []
 
         for _ in range(config.challenge.repeated_framework_count):

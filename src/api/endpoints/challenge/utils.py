@@ -6,9 +6,10 @@ from docker import DockerClient
 from docker.types import Ulimit
 from docker.models.networks import Network
 from pydantic import validate_call
+import requests
 
-from api.config import config
 from api.endpoints.challenge.schemas import MinerOutput
+from api.config import config
 from api.logger import logger
 
 
@@ -106,6 +107,40 @@ def stop_container(container_name: str = "detector_container") -> None:
     except Exception:
         logger.debug(f"Failed to stop container '{container_name}'!")
         pass  # Continue even if container doesn't exist
+
+    return
+
+
+def run_verification_webhook():
+    logger.info("Running human verification webhook.")
+    try:
+        _wait_interval = int(random.uniform(7, 15))
+        _startup_url = str(config.challenge.verification.startup_url).rstrip("/")
+        _url = str(config.challenge.verification.endpoint).rstrip("/")
+
+        _headers = {
+            "X-API-KEY": config.challenge.verification.api_key.get_secret_value()
+        }
+        _body = {
+            "startup_url": _startup_url,
+            "timed_close_sec": _wait_interval,
+            "wait_close": False,
+            # "extra": config.challenge.verification.extra,
+        }
+
+        logger.info(f"Sending request to {_url}, body: {_body}")
+
+        response = requests.post(_url, headers=_headers, json=_body)
+
+        if response.status_code == 200:
+            logger.success("Successfully ran human verification webhook.")
+        else:
+            logger.error(
+                f"Failed to run human verification webhook! Status code: {response.status_code}"
+            )
+    except Exception as err:
+        logger.error(f"Error running human verification webhook: {str(err)}!")
+        raise
 
     return
 
