@@ -29,7 +29,10 @@ def get_task() -> MinerInput:
 
 
 @validate_call
-def score(miner_output: MinerOutput) -> float:
+def score(
+    miner_output: MinerOutput,
+    web_url: str,
+) -> float:
 
     _score = 0.0
     global payload_manager
@@ -53,33 +56,40 @@ def score(miner_output: MinerOutput) -> float:
             _framework_image = _framework["image"]
             _framework_order = _framework["order_number"]
             payload_manager.current_task = _framework
-
-            payload_manager.update_task_status(_framework_order, TaskStatusEnum.RUNNING)
-            logger.info(f"Running detection against {_framework_name}")
-
-            try:
-                _start_time = time.time()
-
-                ch_utils.run_bot_container(
-                    docker_client=_docker_client,
-                    container_name=_framework_name,
-                    network_name="local_network",
-                    image_name=_framework_image,
-                    ulimit=config.challenge.docker_ulimit,
+            if _framework_name == "human":
+                logger.warning(
+                    f"Please visit endpoint {web_url} to complete human verification for the task."
                 )
-                _end_time = time.time()
-                _execution_time = _end_time - _start_time
+                _bot_timeout = 120  # 2 minutes for human
+            else:
+                _bot_timeout = config.challenge.bot_timeout
 
-            except Exception as err:
-                logger.error(
-                    f"Error running detection for {_framework_name}: {str(err)}"
-                )
                 payload_manager.update_task_status(
-                    _framework_order, TaskStatusEnum.FAILED
+                    _framework_order, TaskStatusEnum.RUNNING
                 )
-                continue
+                logger.info(f"Running detection against {_framework_name}")
+                try:
+                    _start_time = time.time()
 
-            _bot_timeout = config.challenge.bot_timeout
+                    ch_utils.run_bot_container(
+                        docker_client=_docker_client,
+                        container_name=_framework_name,
+                        network_name="local_network",
+                        image_name=_framework_image,
+                        ulimit=config.challenge.docker_ulimit,
+                    )
+                    _end_time = time.time()
+                    _execution_time = _end_time - _start_time
+
+                except Exception as err:
+                    logger.error(
+                        f"Error running detection for {_framework_name}: {str(err)}"
+                    )
+                    payload_manager.update_task_status(
+                        _framework_order, TaskStatusEnum.FAILED
+                    )
+                    continue
+
             while True:
                 if payload_manager.check_task_compliance(_framework_order):
                     logger.info(
@@ -104,6 +114,7 @@ def score(miner_output: MinerOutput) -> float:
                     )
                     ch_utils.stop_container(container_name=_framework_name)
                     break
+                time.sleep(1)
         _score = payload_manager.calculate_score()
         payload_manager.submitted_payloads["final_score"] = _score
         logger.info(f"Final score calculated: {_score}")
