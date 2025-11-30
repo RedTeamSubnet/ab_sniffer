@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import validate_call
 
 from api.core.exceptions import BaseHTTPException
+from api.core.constants import EnvEnum
 from api.config import config
 from api.endpoints.challenge.schemas import (
     MinerInput,
@@ -60,7 +61,7 @@ def score(
                     f"Please visit endpoint {web_url} to complete human verification for the task."
                 )
 
-                if not config.debug:
+                if not config.env == EnvEnum.PRODUCTION:
                     ch_utils.run_verification_webhook()
 
                 _bot_timeout = 120  # 2 minutes for human
