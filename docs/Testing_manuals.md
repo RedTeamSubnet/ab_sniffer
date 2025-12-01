@@ -42,7 +42,6 @@ docker compose up -d
 
 - The server runs on port 10001 by default
 - Make sure port 10001 is available on your system
-- The challenge includes trajectory similarity checks between sessions
 - All interactions are logged for analysis
 
 ## Troubleshooting
