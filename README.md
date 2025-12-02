@@ -9,7 +9,7 @@ The challenge infrastructure includes a `web endpoint` where each submission aut
 ## ⚙️ How It Works
 
 1. **Miner Submits Detection Scripts**: The miner submits their detection scripts.
-2. **Challenger container**: Will call `auth key` with symmetric authentification.
+2. **Challenger container**: Will call `auth key` with symmetric authentication.
 3. **Scripts are Loaded into a Web Page**: The submitted scripts are injected into a test web page where the evaluation will take place.
 4. **Randomized Scenarios are Run**: The system runs 9 different scenarios (8 automation frameworks + 1 human user) against the web page. This is repeated 3 times, and the order of the scenarios is randomized and shuffled in each set.
 5. **Payloads are Sent to Web Endpoint**: During each of the 27 test runs, a payload containing the detection results is automatically sent to the `web endpoint` for collection.
