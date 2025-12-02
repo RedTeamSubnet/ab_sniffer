@@ -15,10 +15,6 @@ from redteam_core.validator.models import (
 
 
 class ABSController(Controller):
-    _baseline_reference_cache: dict[str, MinerChallengeCommit] = (
-        {}
-    )  # {docker_hub_id: MinerChallengeCommit}
-
     """
     A specialized controller for the 'ab_sniffer_v5' challenge.
     Inherits from the base Controller and modifies specific logic.
@@ -55,10 +51,9 @@ class ABSController(Controller):
         This process involves:
         1. Building and running the challenge container within an isolated Docker network.
         2. Generating or retrieving challenge inputs to evaluate miners.
-        3. Scoring a baseline Docker image, if specified, to establish a reference point.
-        4. Iteratively running each miner's Docker container to submit and score their solutions.
-        5. Collecting and logging the results, including any errors encountered during execution.
-        6. Cleaning up Docker resources to ensure no residual containers or images remain.
+        3. Iteratively running each miner's Docker container to submit and score their solutions.
+        4. Collecting and logging the results, including any errors encountered during execution.
+        5. Cleaning up Docker resources to ensure no residual containers or images remain.
 
         The method ensures that each miner's submission is evaluated against the challenge inputs,
         and comparison logs are generated to assess performance relative to reference commits.
@@ -95,15 +90,14 @@ class ABSController(Controller):
             except Exception as e:
                 bt.logging.error(f"Error while processing miner {uid} - {hotkey}: {e}")
                 bt.logging.error(traceback.format_exc())
-                if uid != self.baseline_commit.miner_uid:
-                    miner_commit.scoring_logs.append(
-                        ScoringLog(
-                            miner_input=None,
-                            miner_output=None,
-                            score=0,
-                            error=str(e),
-                        )
+                miner_commit.scoring_logs.append(
+                    ScoringLog(
+                        miner_input=None,
+                        miner_output=None,
+                        score=0,
+                        error=str(e),
                     )
+                )
 
             docker_utils.remove_container_by_port(
                 client=self.docker_client,
