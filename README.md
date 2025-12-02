@@ -1,8 +1,19 @@
-# Auto Browser Sniffer v2 Challenge
+# Auto Browser Sniffer Challenge
 
-The **Auto Browser Sniffer v2 Challenge** is the next iteration of Auto Browser Sniffer challenge series which is  designed to test the skills of miners in developing a browser SDK that can accurately detect the driver type used by bots interacting with a webpage. **The new iteration has two more bot frameworks to be detected and more strict evaluation criteria.** Participants must create an SDK that can be installed on a website and automatically identify various bot drivers based on their behavior or technical characteristics.
+The **Auto Browser Sniffer Challenge** is a series designed to test the skills of participants in developing a browser SDK that can accurately detect automation frameworks and genuine human interaction on a webpage. The latest iteration, **AB Sniffer**, introduces a new modular architecture for detection, an updated set of target frameworks, and refined, more stringent evaluation criteria.
 
-![Auto Browser Sniffer v2 Landing Page](docs/images/landing_page.png)
+Participants are tasked with creating an script that can be injected on a website to automatically identify various automation frameworks (such as Nodriver, Seleniumbase, Puppeteerextra, Botasaurus, and others) and distinguish them from genuine human interaction. The challenge emphasizes reliable detection across multiple execution modes, including headless environments. During evaluation, each of the 9 target scenarios will be run multiple times in a randomized and shuffled order to prevent predictable patterns. Submissions are rigorously scored based on accuracy, consistency, and coverage, with a critical penalty applied for any false positives involving human interaction.
+
+The challenge infrastructure includes a `web endpoint` where each submission automatically sends its payload for evaluation, and a `score endpoint` for receiving the results. This score endpoint is secured using symmetric authentication.
+
+## ⚙️ How It Works
+
+1. **Miner Submits Detection Scripts**: The miner submits their detection scripts.
+2. **Challenger container**: Will call `auth key` with symmetric authentification.
+3. **Scripts are Loaded into a Web Page**: The submitted scripts are injected into a test web page where the evaluation will take place.
+4. **Randomized Scenarios are Run**: The system runs 9 different scenarios (8 automation frameworks + 1 human user) against the web page. This is repeated 3 times, and the order of the scenarios is randomized and shuffled in each set.
+5. **Payloads are Sent to Web Endpoint**: During each of the 27 test runs, a payload containing the detection results is automatically sent to the `web endpoint` for collection.
+6. **The Final Score is Returned**: After all 27 sessions are complete and the final score is calculated, the `/score` endpoint completes the process by returning the final score in the HTTP response to the original request.
 
 ## ✨ Features
 
@@ -18,50 +29,7 @@ The **Auto Browser Sniffer v2 Challenge** is the next iteration of Auto Browser 
 
 ## 🛠 Installation
 
-### 1. 🚧 Prerequisites
-
-- Install **Python (>= v3.10)** and **pip (>= 23)**:
-    - **[RECOMMENDED] [Miniconda (v3)](https://docs.anaconda.com/miniconda)**
-    - *[arm64/aarch64] [Miniforge (v3)](https://github.com/conda-forge/miniforge)*
-    - *[Python virtual environment] [venv](https://docs.python.org/3/library/venv.html)*
-[OPTIONAL] For **DEVELOPMENT** environment:
-
-- Install [**git**](https://git-scm.com/downloads)
-- Setup an [**SSH key**](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
-
-### 2. 📥 Download or clone the repository
-
-[TIP] Skip this step, if you have already downloaded the source code.
-
-**2.1.** Prepare projects directory (if not exists):
-
-```sh
-# Create projects directory:
-mkdir -pv ~/workspaces/projects
-
-# Enter into projects directory:
-cd ~/workspaces/projects
-```
-
-**2.2.** Follow one of the below options **[A]**, **[B]** or **[C]**:
-
-**OPTION A.** Clone the repository:
-
-```sh
-git clone https://github.com/RedTeamSubnet/RedTeam.git && \
-    cd RedTeam/redteam_core/challenge_pool/ab_sniffer_v5
-```
-
-**OPTION B.** Clone the repository (for **DEVELOPMENT**: git + ssh key):
-
-```sh
-git clone --recursive git@github.com:RedTeamSubnet/RedTeam.git && \
-    cd RedTeam/redteam_core/challenge_pool/ab_sniffer_v5 && \
-    git submodule update --init --recursive && \
-    git submodule foreach --recursive git checkout main
-```
-
-### 3. 📦 Install dependencies
+### 1. 📦 Install dependencies
 
 [TIP] Skip this step, if you're going to use **docker** runtime
 
@@ -69,46 +37,11 @@ git clone --recursive git@github.com:RedTeamSubnet/RedTeam.git && \
 pip install -r ./requirements.txt
 ```
 
-### 4. 🏁 Start the server
-
-#### Standalone runtime (Python)
-
-**OPTION A.** Run server as **python module**:
-
-```sh
-python -u -m src.api
-
-# Or:
-cd src
-python -u -m api
-```
-
-**OPTION B.** Run server as **python script**:
-
-```sh
-cd src
-python -u ./main.py
-```
-
-**OPTION C.** Run with **uvicorn** cli:
-
-```sh
-uvicorn src.main:app --host=[BIND_HOST] --port=[PORT] --no-access-log --no-server-header --proxy-headers --forwarded-allow-ips="*"
-# For example:
-uvicorn src.main:app --host="0.0.0.0" --port=10001 --no-access-log --no-server-header --proxy-headers --forwarded-allow-ips="*"
-
-
-# Or:
-cd src
-uvicorn main:app --host="0.0.0.0" --port=10001 --no-access-log --no-server-header --proxy-headers --forwarded-allow-ips="*"
-
-# For DEVELOPMENT:
-uvicorn main:app --host="0.0.0.0" --port=10001 --no-access-log --no-server-header --proxy-headers --forwarded-allow-ips="*" --reload --reload-include="*.yml" --reload-include=".env"
-```
+### 2. 🏁 Start the server
 
 #### Docker runtime
 
-**OPTION D.** Run with **docker compose**:
+**OPTION A.** Run with **docker compose**:
 
 ```sh
 ## 1. Configure 'compose.override.yml' file.
@@ -191,6 +124,11 @@ ABS_API_PORT=10001
 # ABS_API_DOCS_OPENAPI_URL="{api_prefix}/openapi.json"
 # ABS_API_DOCS_DOCS_URL="{api_prefix}/docs"
 # ABS_API_DOCS_REDOC_URL="{api_prefix}/redoc"
+
+## -- Rewarding Service Endpoints & Auth -- ##
+ABS_WEB_ENDPOINT_URL="http://localhost:8000/web"
+ABS_SCORE_ENDPOINT_URL="http://localhost:8000/score"
+REWARDING_SECRET_KEY="your-strong-secret-key-here" # IMPORTANT: Change this to a strong, unique key
 ```
 
 ## 🏗️ Build Docker Image
