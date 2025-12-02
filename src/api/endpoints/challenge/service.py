@@ -194,6 +194,5 @@ __all__ = [
     "get_task",
     "get_web",
     "score",
-    "post_human_score",
     "get_results",
 ]
