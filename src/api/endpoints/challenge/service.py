@@ -61,7 +61,7 @@ def score(
                     f"Please visit endpoint {web_url} to complete human verification for the task."
                 )
 
-                if not config.env == EnvEnum.PRODUCTION:
+                if config.env == EnvEnum.PRODUCTION:
                     ch_utils.run_verification_webhook()
 
                 _bot_timeout = 120  # 2 minutes for human
